@@ -375,6 +375,17 @@ export const scenarios: Scenario[] = [
   },
 ];
 
+export const passcodes = {
+  categories: [
+    "6826", // After category 1, for category 2
+    "2946", // After category 2, for category 3
+    "2648", // After category 3, for category 4
+    "0174", // After category 4, for category 5
+    "6274", // After category 5, for category 6
+  ],
+  final: "9253" // After category 6, for final submission
+};
+
 
 export const leaderboardData: LeaderboardEntry[] = [
   { rank: 1, name: 'Ava "The Ace" Chen', profitAndLoss: 7850000, totalInvested: 15700000, roi: 50.00 },

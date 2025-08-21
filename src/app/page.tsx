@@ -5,25 +5,84 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { GameHeader } from "@/components/game/GameHeader";
 import { ScenarioCard } from "@/components/game/ScenarioCard";
-import { scenarios } from "@/lib/data";
+import { scenarios, passcodes } from "@/lib/data";
 import type { UserChoice } from "@/lib/types";
 import { Progress } from "@/components/ui/progress";
 import {
   AlertDialog,
   AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { ArrowRight, Lock } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { Logo } from "@/components/Logo";
 
 
 const CATEGORIES = 6;
 const SCENARIOS_PER_CATEGORY = 5;
+
+function PasscodeDialog({ onCorrectPasscode, isFinalSubmission }: { onCorrectPasscode: () => void, isFinalSubmission?: boolean }) {
+  const [passcode, setPasscode] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const { toast } = useToast();
+
+  const currentPasscode = isFinalSubmission ? passcodes.final : passcodes.categories[useState(() => Math.min(useRouter.length, passcodes.categories.length - 1))];
+  const nextCategoryIndex = useState(() => Math.min(useRouter.length, passcodes.categories.length - 1));
+
+  const handleVerify = () => {
+    const correctPasscode = isFinalSubmission ? passcodes.final : passcodes.categories[nextCategoryIndex[0]];
+    if (passcode === correctPasscode) {
+      onCorrectPasscode();
+      setIsOpen(false);
+      setPasscode("");
+    } else {
+      toast({
+        title: "Incorrect Passcode",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button size="lg" className="w-full">
+          Submit Decisions for {scenarios[nextCategoryIndex[0] * SCENARIOS_PER_CATEGORY].category}
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Enter Passcode</DialogTitle>
+          <DialogDescription>
+            {isFinalSubmission
+              ? "Enter the final passcode to submit your results."
+              : `Enter the passcode to proceed to Category ${nextCategoryIndex[0] + 2}.`}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Input
+            type="password"
+            value={passcode}
+            onChange={(e) => setPasscode(e.target.value)}
+            placeholder="Passcode"
+            maxLength={4}
+          />
+          <Button onClick={handleVerify} className="w-full">Verify</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function Home() {
   const router = useRouter();
@@ -36,6 +95,11 @@ export default function Home() {
   const [categoryPAndL, setCategoryPAndL] = useState(0);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [api, setApi] = useState<CarouselApi>()
+  const { toast } = useToast();
+  const [passcode, setPasscode] = useState('');
+  const [isPasscodeModalOpen, setIsPasscodeModalOpen] = useState(false);
+  const [isSubmittingFinal, setIsSubmittingFinal] = useState(false);
+
 
   const currentScenarios = useMemo(() => {
     return scenarios.slice(
@@ -59,7 +123,31 @@ export default function Home() {
     }
   }
 
-  const handleSubmitCategory = () => {
+  const handleCategorySubmitAttempt = () => {
+    setIsPasscodeModalOpen(true);
+    setIsSubmittingFinal(currentCategoryIndex === CATEGORIES - 1);
+  };
+  
+  const handleVerifyPasscode = () => {
+    const correctPasscode = isSubmittingFinal ? passcodes.final : passcodes.categories[currentCategoryIndex];
+    if (passcode === correctPasscode) {
+      setIsPasscodeModalOpen(false);
+      setPasscode('');
+      if (isSubmittingFinal) {
+        handleSubmitCategory(true);
+      } else {
+        handleSubmitCategory(false);
+      }
+    } else {
+      toast({
+        title: "Incorrect Passcode",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSubmitCategory = (isFinal = false) => {
     let categoryProfit = 0;
     let categoryInvestment = 0;
 
@@ -76,7 +164,12 @@ export default function Home() {
     setCategoryPAndL(categoryProfit);
     setProfitAndLoss(prev => prev + categoryProfit);
     setTotalInvested(prev => prev + categoryInvestment);
-    setIsCategoryModalOpen(true);
+    
+    if (isFinal) {
+      setGameState("finished");
+    } else {
+      setIsCategoryModalOpen(true);
+    }
   };
 
   const handleNextCategory = () => {
@@ -86,7 +179,7 @@ export default function Home() {
       setCurrentScenarioInCategory(0);
       api?.scrollTo(0, true);
     } else {
-      setGameState("finished");
+       // This case is now handled by the final passcode submission
     }
   };
   
@@ -106,16 +199,17 @@ export default function Home() {
     return (
       <div className="flex items-center justify-center min-h-screen p-4">
         <Card className="w-full max-w-2xl text-center shadow-2xl bg-card text-white border-primary">
-          <CardHeader>
+          <CardContent className="p-8">
+            <Logo className="h-24 mx-auto mb-6" />
             <p className="text-sm font-medium text-muted-foreground">BHCG Presents</p>
-            <CardTitle className="text-4xl font-bold text-foreground">The Consultant's Gamble</CardTitle>
-          </CardHeader>
-          <CardContent className="text-left space-y-4">
-            <p>You are a consultant from The BITS Hyderabad Consulting Group, engaged by <strong>NutriNova Foods Pvt. Ltd.</strong>, a well-funded packaged food startup preparing for nationwide expansion.</p>
-            <p>NutriNova specializes in AI-powered personalization of healthy foods. The CEO suspects inefficiencies in spending, and the CFO has given you complete financial authority to audit proposed expenses.</p>
-            <p className="font-semibold">Your mission is to audit 30 proposed expenses across six key domains. For each, you must either <span className="text-green-500">Approve</span> (invest) or <span className="text-red-500">Reject</span> (skip).</p>
-            <p>The outcome of each approved expense is uncertain. Skipping may protect resources but risks missing growth opportunities. Your performance will be measured by ROI.</p>
-            <div className="text-center pt-4">
+            <h1 className="text-4xl font-bold text-teal-400 my-2">The Consultant's Gamble</h1>
+            <div className="text-left space-y-3 mt-6 text-base">
+              <p>You are a consultant from The BITS Hyderabad Consulting Group, engaged by <strong>NutriNova Foods Pvt. Ltd.</strong>, a well-funded packaged food startup preparing for nationwide expansion.</p>
+              <p>NutriNova specializes in AI-powered personalization of healthy foods. The CEO suspects inefficiencies in spending, and the CFO has given you complete financial authority to audit proposed expenses.</p>
+              <p className="font-semibold">Your mission is to audit 30 proposed expenses across six key domains. For each, you must either <span className="text-green-500">Approve</span> (invest) or <span className="text-red-500">Reject</span> (skip).</p>
+              <p>The outcome of each approved expense is uncertain. Skipping may protect resources but risks missing growth opportunities. Your performance will be measured by ROI.</p>
+            </div>
+            <div className="text-center pt-8">
               <Button size="lg" onClick={() => setGameState("playing")}>
                 Begin Assessment <ArrowRight className="ml-2" />
               </Button>
@@ -168,14 +262,41 @@ export default function Home() {
            ) : (
              <Button
                 size="lg"
-                onClick={handleSubmitCategory}
+                onClick={handleCategorySubmitAttempt}
                 className="w-full"
               >
-                Submit Decisions for {currentScenarios[0].category}
+                {currentCategoryIndex < CATEGORIES - 1 ? `Submit Decisions for ${currentScenarios[0].category}` : 'Final Submission'}
               </Button>
            )}
         </div>
       </main>
+      
+      <AlertDialog open={isPasscodeModalOpen} onOpenChange={setIsPasscodeModalOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Enter Passcode <Lock className="inline-block h-5 w-5 ml-1"/></AlertDialogTitle>
+            <AlertDialogDescription>
+              {isSubmittingFinal
+                ? "Enter the final passcode to complete your assessment."
+                : `Enter the passcode for Category ${currentCategoryIndex + 2}.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex flex-col space-y-4 my-4">
+            <Input
+              type="password"
+              placeholder="****"
+              value={passcode}
+              onChange={(e) => setPasscode(e.target.value)}
+              maxLength={4}
+              className="text-center text-2xl tracking-[1rem]"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPasscode('')}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleVerifyPasscode}>Verify</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={isCategoryModalOpen}>
         <AlertDialogContent>
@@ -195,7 +316,7 @@ export default function Home() {
           </div>
           <AlertDialogFooter>
             <AlertDialogAction onClick={handleNextCategory}>
-              {currentCategoryIndex < CATEGORIES - 1 ? "Next Category" : "View Final Results"}
+              Next Category
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

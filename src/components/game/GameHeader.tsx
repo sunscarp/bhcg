@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Dice5 } from "lucide-react";
+import { Logo } from "../Logo";
 
 type GameHeaderProps = {
   profitAndLoss: number;
