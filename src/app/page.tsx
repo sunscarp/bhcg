@@ -105,10 +105,10 @@ export default function Home() {
   if (gameState === "welcome") {
     return (
       <div className="flex items-center justify-center min-h-screen p-4">
-        <Card className="w-full max-w-2xl text-center shadow-2xl bg-card text-card-foreground border-primary">
+        <Card className="w-full max-w-2xl text-center shadow-2xl bg-card text-white border-primary">
           <CardHeader>
             <p className="text-sm font-medium text-muted-foreground">BHCG Presents</p>
-            <CardTitle className="text-4xl font-bold">The Consultant's Gamble</CardTitle>
+            <CardTitle className="text-4xl font-bold text-foreground">The Consultant's Gamble</CardTitle>
           </CardHeader>
           <CardContent className="text-left space-y-4">
             <p>You are a consultant from The BITS Hyderabad Consulting Group, engaged by <strong>NutriNova Foods Pvt. Ltd.</strong>, a well-funded packaged food startup preparing for nationwide expansion.</p>
