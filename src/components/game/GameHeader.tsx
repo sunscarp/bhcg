@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { AuthButton } from "@/components/auth/AuthButton";
 
 type GameHeaderProps = {
   profitAndLoss: number;
@@ -41,7 +40,6 @@ export function GameHeader({ profitAndLoss }: GameHeaderProps) {
               })}
             </p>
           </div>
-          <AuthButton />
         </div>
       </div>
     </header>
