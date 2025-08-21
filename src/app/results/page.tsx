@@ -37,11 +37,11 @@ export default function ResultsPage() {
             </div>
           <div 
             className={cn(
-                "inline-flex items-center justify-center text-8xl md:text-9xl font-black p-4 rounded-lg",
+                "inline-flex items-center justify-center text-7xl md:text-8xl font-black p-4 rounded-lg",
                 isPositive ? "text-green-500" : "text-red-500"
             )}
           >
-            {isPositive ? <TrendingUp className="w-20 h-20 mr-4" /> : <TrendingDown className="w-20 h-20 mr-4" />}
+            {isPositive ? <TrendingUp className="w-16 h-16 mr-4" /> : <TrendingDown className="w-16 h-16 mr-4" />}
             <span>{roi.toFixed(3)}%</span>
           </div>
         </CardContent>
