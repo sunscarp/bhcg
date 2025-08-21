@@ -21,68 +21,11 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight, Lock } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Logo } from "@/components/Logo";
-
 
 const CATEGORIES = 6;
 const SCENARIOS_PER_CATEGORY = 5;
-
-function PasscodeDialog({ onCorrectPasscode, isFinalSubmission }: { onCorrectPasscode: () => void, isFinalSubmission?: boolean }) {
-  const [passcode, setPasscode] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
-  const { toast } = useToast();
-
-  const currentPasscode = isFinalSubmission ? passcodes.final : passcodes.categories[useState(() => Math.min(useRouter.length, passcodes.categories.length - 1))];
-  const nextCategoryIndex = useState(() => Math.min(useRouter.length, passcodes.categories.length - 1));
-
-  const handleVerify = () => {
-    const correctPasscode = isFinalSubmission ? passcodes.final : passcodes.categories[nextCategoryIndex[0]];
-    if (passcode === correctPasscode) {
-      onCorrectPasscode();
-      setIsOpen(false);
-      setPasscode("");
-    } else {
-      toast({
-        title: "Incorrect Passcode",
-        description: "Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button size="lg" className="w-full">
-          Submit Decisions for {scenarios[nextCategoryIndex[0] * SCENARIOS_PER_CATEGORY].category}
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Enter Passcode</DialogTitle>
-          <DialogDescription>
-            {isFinalSubmission
-              ? "Enter the final passcode to submit your results."
-              : `Enter the passcode to proceed to Category ${nextCategoryIndex[0] + 2}.`}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <Input
-            type="password"
-            value={passcode}
-            onChange={(e) => setPasscode(e.target.value)}
-            placeholder="Passcode"
-            maxLength={4}
-          />
-          <Button onClick={handleVerify} className="w-full">Verify</Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 export default function Home() {
   const router = useRouter();
@@ -162,11 +105,16 @@ export default function Home() {
     });
 
     setCategoryPAndL(categoryProfit);
-    setProfitAndLoss(prev => prev + categoryProfit);
-    setTotalInvested(prev => prev + categoryInvestment);
+    const newProfitAndLoss = profitAndLoss + categoryProfit;
+    const newTotalInvested = totalInvested + categoryInvestment;
+
+    setProfitAndLoss(newProfitAndLoss);
+    setTotalInvested(newTotalInvested);
     
     if (isFinal) {
-      setGameState("finished");
+      const finalRoi = newTotalInvested > 0 ? (newProfitAndLoss / newTotalInvested) * 100 : 0;
+      localStorage.setItem('finalRoi', finalRoi.toFixed(3));
+      router.push('/results');
     } else {
       setIsCategoryModalOpen(true);
     }
@@ -178,20 +126,8 @@ export default function Home() {
       setCurrentCategoryIndex(prev => prev + 1);
       setCurrentScenarioInCategory(0);
       api?.scrollTo(0, true);
-    } else {
-       // This case is now handled by the final passcode submission
     }
   };
-  
-  const resetGame = () => {
-    setGameState("welcome");
-    setCurrentCategoryIndex(0);
-    setCurrentScenarioInCategory(0);
-    setAnswers({});
-    setProfitAndLoss(0);
-    setTotalInvested(0);
-    setCategoryPAndL(0);
-  }
 
   const roi = totalInvested > 0 ? (profitAndLoss / totalInvested) * 100 : 0;
 
@@ -200,14 +136,13 @@ export default function Home() {
       <div className="flex items-center justify-center min-h-screen p-4">
         <Card className="w-full max-w-2xl text-center shadow-2xl bg-card text-white border-primary">
           <CardContent className="p-8">
-            <Logo className="h-24 mx-auto mb-6" />
             <p className="text-sm font-medium text-muted-foreground">BHCG Presents</p>
             <h1 className="text-4xl font-bold text-teal-400 my-2">The Consultant's Gamble</h1>
             <div className="text-left space-y-3 mt-6 text-base">
               <p>You are a consultant from The BITS Hyderabad Consulting Group, engaged by <strong>NutriNova Foods Pvt. Ltd.</strong>, a well-funded packaged food startup preparing for nationwide expansion.</p>
               <p>NutriNova specializes in AI-powered personalization of healthy foods. The CEO suspects inefficiencies in spending, and the CFO has given you complete financial authority to audit proposed expenses.</p>
               <p className="font-semibold">Your mission is to audit 30 proposed expenses across six key domains. For each, you must either <span className="text-green-500">Approve</span> (invest) or <span className="text-red-500">Reject</span> (skip).</p>
-              <p>The outcome of each approved expense is uncertain. Skipping may protect resources but risks missing growth opportunities. Your performance will be measured by ROI.</p>
+              <p>The outcome of each approved expense is uncertain. Your performance will be measured by ROI.</p>
             </div>
             <div className="text-center pt-8">
               <Button size="lg" onClick={() => setGameState("playing")}>
@@ -222,7 +157,7 @@ export default function Home() {
   
   return (
     <div className="flex flex-col min-h-screen">
-      <GameHeader profitAndLoss={profitAndLoss} />
+      <GameHeader profitAndLoss={profitAndLoss} totalInvested={totalInvested} roi={roi} />
       <main className="flex-grow container mx-auto p-4 md:p-8 flex flex-col items-center justify-center">
         <div className="w-full max-w-4xl mb-8">
           <div className="flex justify-between items-center mb-2">
@@ -308,42 +243,16 @@ export default function Home() {
           </AlertDialogHeader>
           <div className="space-y-4 my-4">
             <div className={`text-lg font-semibold ${categoryPAndL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-              Category P/L: {categoryPAndL.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+              Category P/L: {categoryPAndL.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
             </div>
             <div className="text-lg font-semibold">
-              Total P/L: {profitAndLoss.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+              Total P/L: {profitAndLoss.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
             </div>
           </div>
           <AlertDialogFooter>
             <AlertDialogAction onClick={handleNextCategory}>
               Next Category
             </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={gameState === "finished"}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Final Assessment Results</AlertDialogTitle>
-            <AlertDialogDescription>
-              Your consultation is complete. Here is your final performance summary.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="space-y-4 my-4">
-            <div className={`text-2xl font-bold ${profitAndLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-              Net P/L: {profitAndLoss.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-            </div>
-            <p className="text-muted-foreground">
-              Total Amount Invested: {totalInvested.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-            </p>
-            <div className={`text-xl font-semibold ${roi >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-              Return on Investment (ROI): {roi.toFixed(2)}%
-            </div>
-          </div>
-          <AlertDialogFooter>
-            <Button variant="outline" onClick={resetGame}>Play Again</Button>
-            <AlertDialogAction onClick={() => router.push('/leaderboard')}>View Leaderboard</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
