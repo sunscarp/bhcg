@@ -18,8 +18,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, ArrowRight } from "lucide-react";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from "@/components/ui/carousel";
+import { ArrowRight } from "lucide-react";
+import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
+import { Logo } from "@/components/Logo";
 
 
 const CATEGORIES = 6;
@@ -107,6 +108,7 @@ export default function Home() {
       <div className="flex items-center justify-center min-h-screen">
         <Card className="w-full max-w-xl text-center shadow-2xl bg-card text-card-foreground border-primary">
           <CardHeader>
+            <Logo className="h-32 w-auto mx-auto mb-4 text-primary" />
             <CardTitle className="text-4xl font-bold">The Consultant's Gamble</CardTitle>
             <CardDescription className="text-lg text-muted-foreground pt-2">
               Welcome, Consultant. Your expertise is required. You will be presented with 30 investment scenarios across 6 categories. Your decisions to approve or reject will determine our firm's fortune.
