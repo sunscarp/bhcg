@@ -20,7 +20,6 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowRight } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
-import { Logo } from "@/components/Logo";
 
 
 const CATEGORIES = 6;
@@ -105,20 +104,22 @@ export default function Home() {
 
   if (gameState === "welcome") {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-full max-w-xl text-center shadow-2xl bg-card text-card-foreground border-primary">
+      <div className="flex items-center justify-center min-h-screen p-4">
+        <Card className="w-full max-w-2xl text-center shadow-2xl bg-card text-card-foreground border-primary">
           <CardHeader>
-            <Logo className="h-32 w-auto mx-auto mb-4 text-primary" />
+            <p className="text-sm font-medium text-muted-foreground">BHCG Presents</p>
             <CardTitle className="text-4xl font-bold">The Consultant's Gamble</CardTitle>
-            <CardDescription className="text-lg text-muted-foreground pt-2">
-              Welcome, Consultant. Your expertise is required. You will be presented with 30 investment scenarios across 6 categories. Your decisions to approve or reject will determine our firm's fortune.
-            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="mb-6">Analyze each scenario carefully. Once you submit your decisions for a category, they are final. Your performance will be tracked and compared against other consultants on the leaderboard. Good luck.</p>
-            <Button size="lg" onClick={() => setGameState("playing")}>
-              Begin Assessment <ArrowRight className="ml-2" />
-            </Button>
+          <CardContent className="text-left space-y-4">
+            <p>You are a consultant from The BITS Hyderabad Consulting Group, engaged by <strong>NutriNova Foods Pvt. Ltd.</strong>, a well-funded packaged food startup preparing for nationwide expansion.</p>
+            <p>NutriNova specializes in AI-powered personalization of healthy foods. The CEO suspects inefficiencies in spending, and the CFO has given you complete financial authority to audit proposed expenses.</p>
+            <p className="font-semibold">Your mission is to audit 30 proposed expenses across six key domains. For each, you must either <span className="text-green-500">Approve</span> (invest) or <span className="text-red-500">Reject</span> (skip).</p>
+            <p>The outcome of each approved expense is uncertain. Skipping may protect resources but risks missing growth opportunities. Your performance will be measured by ROI.</p>
+            <div className="text-center pt-4">
+              <Button size="lg" onClick={() => setGameState("playing")}>
+                Begin Assessment <ArrowRight className="ml-2" />
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
