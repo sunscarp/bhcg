@@ -12,7 +12,7 @@ type ScenarioCardProps = {
 };
 
 export function ScenarioCard({ scenario, onSelect, choice, scenarioIndex }: ScenarioCardProps) {
-  const { id, category } = scenario;
+  const { id, category, title } = scenario;
   const isAnswered = choice !== undefined;
 
   const getBorderColor = () => {
@@ -23,7 +23,7 @@ export function ScenarioCard({ scenario, onSelect, choice, scenarioIndex }: Scen
   return (
     <Card className={cn("flex flex-col transition-all duration-300 h-64 justify-between", getBorderColor(), isAnswered && "shadow-lg shadow-primary/20", "bg-card text-card-foreground")}>
       <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Investment {scenarioIndex}</CardTitle>
+          <CardTitle className="text-2xl font-bold">{title}</CardTitle>
           <CardDescription className="text-lg">{category}</CardDescription>
       </CardHeader>
       <CardContent className="flex-grow flex items-center justify-center">
@@ -33,7 +33,7 @@ export function ScenarioCard({ scenario, onSelect, choice, scenarioIndex }: Scen
           className="w-full bg-green-600 hover:bg-green-700 text-white"
           onClick={() => onSelect(id, "approve")}
           disabled={isAnswered}
-          aria-label={`Approve Investment ${scenarioIndex}`}
+          aria-label={`Approve ${title}`}
         >
           <Check className="mr-2" /> Approve
         </Button>
@@ -41,7 +41,7 @@ export function ScenarioCard({ scenario, onSelect, choice, scenarioIndex }: Scen
           className="w-full bg-red-600 hover:bg-red-700 text-white"
           onClick={() => onSelect(id, "reject")}
           disabled={isAnswered}
-          aria-label={`Reject Investment ${scenarioIndex}`}
+          aria-label={`Reject ${title}`}
         >
           <X className="mr-2" /> Reject
         </Button>
