@@ -38,7 +38,7 @@ export function GameHeader({ profitAndLoss, totalInvested, roi }: GameHeaderProp
                 </span>
             </div>
         </div>
-        <div className="hidden md:flex items-center space-x-4">
+        <div className="hidden md:flex items-center space-x-4 md:ml-auto">
            <span className="font-bold text-lg">BHCG</span>
         </div>
       </div>

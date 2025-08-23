@@ -70,3 +70,30 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Basic mobile responsiveness */
+@media (max-width: 768px) {
+  body {
+    font-size: 14px; /* Smaller base font size for mobile */
+  }
+
+  /* Example: Adjust layout for main content area */
+  main {
+    padding: 10px; /* Reduce padding on smaller screens */
+  }
+
+  /* Example: Make components stack vertically if needed */
+  .flex-container {
+    flex-direction: column;
+  }
+
+  /* Example: Adjust button sizes */
+  button {
+    padding: 10px 15px;
+  }
+
+  /* Example: Hide certain elements on mobile if they are not essential */
+  .hide-on-mobile {
+    display: none;
+  }
+}
