@@ -11,7 +11,7 @@ type GameHeaderProps = {
 export function GameHeader({ profitAndLoss, totalInvested, roi }: GameHeaderProps) {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center">
+      <div className="container flex h-16 items-center justify-between">
         {/* Left Section */}
         <div className="flex items-center">
           <Link href="/" className="flex items-center space-x-2">
@@ -21,7 +21,7 @@ export function GameHeader({ profitAndLoss, totalInvested, roi }: GameHeaderProp
         </div>
 
         {/* Center Section */}
-        <div className="flex-1 flex justify-center items-center space-x-4 md:space-x-6 text-sm font-medium">
+        <div className="flex-1 flex justify-center items-center space-x-4 md:space-x-6 text-sm font-medium px-4">
           <div className="flex flex-col items-center">
             <span className="text-muted-foreground text-xs">P/L</span>
             <span className={cn("font-semibold", profitAndLoss >= 0 ? "text-green-500" : "text-red-500")}>
@@ -43,7 +43,7 @@ export function GameHeader({ profitAndLoss, totalInvested, roi }: GameHeaderProp
         </div>
         
         {/* Right Section */}
-        <div className="flex items-center">
+        <div className="flex items-center justify-end">
            <span className="font-bold text-lg">BHCG</span>
         </div>
       </div>
