@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { Dice5 } from "lucide-react";
 import { cn } from "@/lib/utils";
+// ...existing code... (removed unused auth/signOut imports)
 
 type GameHeaderProps = {
   profitAndLoss: number;
@@ -64,7 +67,9 @@ export function GameHeader({ profitAndLoss, totalInvested, roi }: GameHeaderProp
 
         {/* Right Section */}
         <div className="ml-auto flex items-center">
-          <span className="font-bold text-lg">BHCG</span>
+          <div className="flex items-center space-x-3">
+            <span className="font-bold text-lg">BHCG</span>
+          </div>
         </div>
       </div>
     </header>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { GameHeader } from "@/components/game/GameHeader";
@@ -23,6 +23,10 @@ import { ArrowRight, Lock } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { auth, googleProvider, db } from "@/lib/firebase";
+import { doc, setDoc, getDoc, collection, serverTimestamp } from "firebase/firestore";
+import { loadGameProgress, saveGameProgress, saveFinalRoi } from '@/hooks/use-game-progress';
+import { signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
 
 const CATEGORIES = 6;
 const SCENARIOS_PER_CATEGORY = 5;
@@ -42,6 +46,112 @@ export default function Home() {
   const [passcode, setPasscode] = useState('');
   const [isPasscodeModalOpen, setIsPasscodeModalOpen] = useState(false);
   const [isSubmittingFinal, setIsSubmittingFinal] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [savedWasAttempted, setSavedWasAttempted] = useState(false);
+  const [hasLocalProgress, setHasLocalProgress] = useState(false);
+  const [uiRefresh, setUiRefresh] = useState(0);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // restore saved progress from localStorage
+  useEffect(() => {
+    const p = loadGameProgress();
+    if (p) {
+      if (p.answers) setAnswers(p.answers);
+      if (typeof p.currentCategoryIndex === 'number') setCurrentCategoryIndex(p.currentCategoryIndex);
+      if (typeof p.currentScenarioInCategory === 'number') setCurrentScenarioInCategory(p.currentScenarioInCategory);
+      if (typeof p.profitAndLoss === 'number') setProfitAndLoss(p.profitAndLoss);
+      if (typeof p.totalInvested === 'number') setTotalInvested(p.totalInvested);
+      // Instead of immediately redirecting, offer the user a choice to resume or view results
+      setSavedWasAttempted(!!p.attempted);
+      // defer showing the resume modal until we know the user's auth state
+      setHasLocalProgress(true);
+    }
+  }, []);
+
+  // only show resume modal if we actually have saved progress AND the user is signed in
+  useEffect(() => {
+    if (hasLocalProgress && user) {
+      setShowResumeModal(true);
+    }
+  }, [hasLocalProgress, user]);
+
+  // If resume modal is showing and the user is signed in, check whether they already have
+  // a leaderboard document (meaning they already submitted). If so, redirect to results
+  // immediately and don't show resume/start-new options.
+  useEffect(() => {
+    if (!showResumeModal) return;
+    if (!user) return;
+
+    (async () => {
+      try {
+        const existing = await getDoc(doc(db, 'leaderboard', user.uid));
+        if (existing.exists()) {
+          // they already submitted — send them straight to results
+          setShowResumeModal(false);
+          router.push('/results');
+        }
+      } catch (err) {
+        console.error('failed to check leaderboard for existing entry', err);
+      }
+    })();
+  }, [showResumeModal, user]);
+
+  // autosave progress to localStorage on important changes
+  useEffect(() => {
+    saveGameProgress({
+      answers,
+      currentCategoryIndex,
+      currentScenarioInCategory,
+      profitAndLoss,
+      totalInvested,
+      attempted: gameState === 'finished',
+    });
+  }, [answers, currentCategoryIndex, currentScenarioInCategory, profitAndLoss, totalInvested, gameState]);
+
+  // If we resume and the carousel api wasn't ready at resume time, scroll when api becomes available
+  useEffect(() => {
+    if (gameState === 'playing' && api) {
+      // small delay to ensure carousel has finished any internal setup
+      const t = setTimeout(() => {
+        try {
+          api.scrollTo(currentScenarioInCategory, true);
+        } catch (e) {
+          console.error('carousel scrollTo failed', e);
+        }
+      }, 100);
+      return () => clearTimeout(t);
+    }
+  }, [gameState, api, currentScenarioInCategory]);
+
+  const ALLOWED_DOMAIN = "@hyderabad.bits-pilani.ac.in";
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const u = result.user;
+      const email: string | null = u?.email ?? null;
+      if (!email || !email.endsWith(ALLOWED_DOMAIN)) {
+        // not allowed - sign out and show toast
+        await signOut(auth);
+        toast({
+          title: "Unauthorized account",
+          description: `Please sign in with a ${ALLOWED_DOMAIN} account.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      // allowed - user state will be set by onAuthStateChanged
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Sign-in failed", description: "Could not sign in. Try again.", variant: "destructive" });
+    }
+  };
 
 
   const currentScenarios = useMemo(() => {
@@ -113,7 +223,32 @@ export default function Home() {
     
     if (isFinal) {
       const finalRoi = newTotalInvested > 0 ? (newProfitAndLoss / newTotalInvested) * 100 : 0;
-      localStorage.setItem('finalRoi', finalRoi.toFixed(3));
+  saveFinalRoi(finalRoi.toFixed(3));
+      // mark attempted to prevent re-attempt
+      const progress = JSON.parse(localStorage.getItem('gameProgress') || '{}');
+      progress.attempted = true;
+      localStorage.setItem('gameProgress', JSON.stringify(progress));
+
+      // write final score to Firestore (if user is signed in)
+      (async () => {
+        try {
+          if (user) {
+            // write using UID as doc id so rules can enforce one entry per user
+            await setDoc(doc(db, 'leaderboard', user.uid), {
+              uid: user.uid,
+              name: user.displayName || user.email,
+              email: user.email,
+              profitAndLoss: newProfitAndLoss,
+              totalInvested: newTotalInvested,
+              roi: finalRoi,
+              createdAt: serverTimestamp(),
+            }, { merge: false });
+          }
+        } catch (err) {
+          console.error('failed to write leaderboard entry', err);
+        }
+      })();
+
       router.push('/results');
     } else {
       setIsCategoryModalOpen(true);
@@ -145,10 +280,51 @@ export default function Home() {
               <p>The outcome of each approved expense is uncertain. Your performance will be measured by ROI.</p>
             </div>
             <div className="text-center pt-8">
-              <Button size="lg" onClick={() => setGameState("playing")}>
-                Begin Assessment <ArrowRight className="ml-2" />
-              </Button>
+              {!user ? (
+                <Button size="lg" onClick={handleGoogleSignIn}>
+                  Sign in with Google
+                </Button>
+              ) : (
+                <div className="flex items-center justify-center">
+                  <Button size="lg" onClick={() => setGameState("playing")}>
+                    Begin Assessment <ArrowRight className="ml-2" />
+                  </Button>
+                </div>
+              )}
             </div>
+            {/* Resume modal */}
+            <AlertDialog open={showResumeModal} onOpenChange={setShowResumeModal}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Resume your progress?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    We found saved progress from your previous session. Would you like to resume where you left off, start a new attempt, or view your results?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  {savedWasAttempted ? (
+                    <AlertDialogAction onClick={() => router.push('/results')}>View Results</AlertDialogAction>
+                  ) : (
+                    <AlertDialogAction onClick={() => {
+                      // close modal first to release any focus traps, then enter playing state
+                      setShowResumeModal(false);
+                      // blur active element to be safe
+                      try { (document.activeElement as HTMLElement)?.blur(); } catch (e) {}
+                      // give the dialog a bit more time to fully unmount and remove its overlay
+                      setTimeout(() => {
+                        setGameState('playing');
+                        // attempt to restore carousel to saved scenario
+                        try { api?.scrollTo(currentScenarioInCategory, true); } catch (e) {}
+                        // ensure focus is on the document body so interactions work
+                        try { (document.body as HTMLElement).focus(); } catch (e) {}
+                        // small UI refresh to force re-render of child components
+                        setTimeout(() => setUiRefresh(u => u + 1), 50);
+                      }, 300);
+                    }}>Resume</AlertDialogAction>
+                  )}
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </CardContent>
         </Card>
       </div>
@@ -258,4 +434,15 @@ export default function Home() {
       </AlertDialog>
     </div>
   );
+}
+
+// hook up auth listener
+// note: put listener at module scope won't run in server; kept here to ensure client-only
+export function _useAuthInit() {
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      // noop - page uses its own listener; this placeholder keeps firebase module loaded
+    });
+    return () => unsub();
+  }, []);
 }
