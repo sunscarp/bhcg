@@ -47,6 +47,7 @@ export default function Home() {
   const [isPasscodeModalOpen, setIsPasscodeModalOpen] = useState(false);
   const [isSubmittingFinal, setIsSubmittingFinal] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [isValidDomainUser, setIsValidDomainUser] = useState(false);
   const [showResumeModal, setShowResumeModal] = useState(false);
   const [savedWasAttempted, setSavedWasAttempted] = useState(false);
   const [hasLocalProgress, setHasLocalProgress] = useState(false);
@@ -54,6 +55,8 @@ export default function Home() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
+      const email = u?.email ?? "";
+      setIsValidDomainUser(!!email && email.endsWith(ALLOWED_DOMAIN));
     });
     return () => unsubscribe();
   }, []);
@@ -284,9 +287,11 @@ export default function Home() {
                 <Button size="lg" onClick={handleGoogleSignIn}>
                   Sign in with Google
                 </Button>
-              ) : (
+              ) : !isValidDomainUser ? (
+                <div className="text-red-400 font-semibold mb-4">Please sign in with a {ALLOWED_DOMAIN} account to play.</div>
+                ) : (
                 <div className="flex items-center justify-center">
-                  <Button size="lg" onClick={() => setGameState("playing")}>
+                  <Button size="lg" onClick={() => setGameState("playing")}> 
                     Begin Assessment <ArrowRight className="ml-2" />
                   </Button>
                 </div>
@@ -305,22 +310,32 @@ export default function Home() {
                   {savedWasAttempted ? (
                     <AlertDialogAction onClick={() => router.push('/results')}>View Results</AlertDialogAction>
                   ) : (
-                    <AlertDialogAction onClick={() => {
-                      // close modal first to release any focus traps, then enter playing state
-                      setShowResumeModal(false);
-                      // blur active element to be safe
-                      try { (document.activeElement as HTMLElement)?.blur(); } catch (e) {}
-                      // give the dialog a bit more time to fully unmount and remove its overlay
-                      setTimeout(() => {
-                        setGameState('playing');
-                        // attempt to restore carousel to saved scenario
-                        try { api?.scrollTo(currentScenarioInCategory, true); } catch (e) {}
-                        // ensure focus is on the document body so interactions work
-                        try { (document.body as HTMLElement).focus(); } catch (e) {}
-                        // small UI refresh to force re-render of child components
-                        setTimeout(() => setUiRefresh(u => u + 1), 50);
-                      }, 300);
-                    }}>Resume</AlertDialogAction>
+                    <AlertDialogAction
+                      onClick={() => {
+                        if (!isValidDomainUser) {
+                          toast({
+                            title: "Unauthorized account",
+                            description: `Please sign in with a ${ALLOWED_DOMAIN} account to resume.`,
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        // close modal first to release any focus traps, then enter playing state
+                        setShowResumeModal(false);
+                        // blur active element to be safe
+                        try { (document.activeElement as HTMLElement)?.blur(); } catch (e) {}
+                        // give the dialog a bit more time to fully unmount and remove its overlay
+                        setTimeout(() => {
+                          setGameState('playing');
+                          // attempt to restore carousel to saved scenario
+                          try { api?.scrollTo(currentScenarioInCategory, true); } catch (e) {}
+                          // ensure focus is on the document body so interactions work
+                          try { (document.body as HTMLElement).focus(); } catch (e) {}
+                          // small UI refresh to force re-render of child components
+                          setTimeout(() => setUiRefresh(u => u + 1), 50);
+                        }, 300);
+                      }}
+                    >Resume</AlertDialogAction>
                   )}
                 </AlertDialogFooter>
               </AlertDialogContent>
